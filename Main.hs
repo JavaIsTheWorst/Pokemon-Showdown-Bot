@@ -65,7 +65,7 @@ commandParse conn room username message
     if room == "pm"
       then send conn $ "|/w " `T.append` username `T.append` ", No."
       else send conn $ room `T.append` "|No."
-  | "say " `T.isPrefixOf` (T.toLower message) && T.tail username == T.pack Config.username =
+  | "say " `T.isPrefixOf` (T.toLower message) && T.tail username == T.pack Config.owner =
     send conn (T.tail.T.tail.T.tail.T.tail$message)    
   | "github please" `T.isPrefixOf` (T.toLower message) =
     send conn $ "|/w " `T.append` username `T.append` ", https://github.com/JavaIsTheWorst/Pokemon-Showdown-Bot"
