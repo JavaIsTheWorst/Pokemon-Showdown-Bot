@@ -67,6 +67,8 @@ commandParse conn room username message
       else send conn $ room `T.append` "|No."
   | "say " `T.isPrefixOf` (T.toLower message) && T.tail username == T.pack Config.username =
     send conn (T.tail.T.tail.T.tail.T.tail$message)    
+  | "github please" `T.isPrefixOf` (T.toLower message) =
+    send conn $ "|/w " `T.append` username `T.append` ", https://github.com/JavaIsTheWorst/Pokemon-Showdown-Bot"
   | otherwise = return ()
 
 
