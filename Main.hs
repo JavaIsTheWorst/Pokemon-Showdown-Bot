@@ -13,6 +13,7 @@ import           Data.Text            (Text)
 import           GHC.Generics         (Generic)
 import           GHC.IO.Encoding      (setLocaleEncoding, utf8)
 import           Data.Text.Encoding   (encodeUtf8)
+import           System.Random        (randomRIO)
 import qualified Data.ByteString.Lazy as B
 import qualified Data.Text            as T
 import qualified Data.Text.IO         as T
@@ -26,7 +27,7 @@ send = WS.sendTextData
 app :: WS.ClientApp ()
 app conn = do
   putStrLn $ "Successfully connected to " ++ "ws://" ++ Config.server ++ ":" ++ (show Config.port) ++ Config.path
-  _ <- forkIO $ forever $ WS.receiveData conn >>= liftIO . parse conn
+  _ <- forkIO $ forever $ WS.receiveData conn >>= parse conn
   let loop = do
         line <- T.getLine
         unless (T.null line) $ send conn line >> loop
@@ -53,9 +54,9 @@ parse conn s = print s >> parse' conn s
               let loginCommand = "|/trn " ++ Config.username ++ ",0," ++ getAssertion jsonData
               send conn $ T.pack loginCommand
               startUpActions conn
-          | "|pm" `T.isPrefixOf` s =
-            let messageList = T.splitOn "|" s
-            in  commandParse conn "pm" (messageList !! 2) $ T.intercalate "|" (tail.tail.tail.tail$messageList)
+          | "|pm" `T.isPrefixOf` s = do
+            appendFile "log.txt" $ T.unpack s
+            commandParse conn "pm" (messageList !! 2) $ T.intercalate "|" (tail.tail.tail.tail$messageList)
           | otherwise = return ()
             where messageList = T.splitOn "|" s
 
@@ -66,16 +67,32 @@ commandParse conn room username message
       then send conn $ "|/w " `T.append` username `T.append` ", No."
       else send conn $ room `T.append` "|No."
   | "say " `T.isPrefixOf` (T.toLower message) && T.tail username == T.pack Config.owner =
-    send conn (T.tail.T.tail.T.tail.T.tail$message)    
+    send conn (T.tail.T.tail.T.tail.T.tail$message)
   | "github please" `T.isPrefixOf` (T.toLower message) =
     send conn $ "|/w " `T.append` username `T.append` ", https://github.com/JavaIsTheWorst/Pokemon-Showdown-Bot"
-  | otherwise = return ()
-
+  | "what is java" `T.isPrefixOf` (T.toLower message) = do
+    forkIO $ do
+      send conn $ "|/w " `T.append` username `T.append` ", Java is a general-purpose (aka vaguely defined purpose) computer programming language (voodoo) that is concurrent (bad at multi-tasking), class-based (tries to be well structured), object-oriented (cannot process abstract ideas), and specifically designed to have as few implementation dependencies"
+      send conn $ "|/w " `T.append` username `T.append` ", as possible (isolated from reality)."
+      threadDelay $ 1*1000*1000
+      send conn $ "|/w " `T.append` username `T.append` ", It is intended to let application developers \"write once, run anywhere\", meaning that compiled Java code can run on all platforms that support Java without the need for recompilation"
+      send conn $ "|/w " `T.append` username `T.append` ", (making the arms of corporate conspiracies to quietly take over the modern society stretch all that farther)."
+    return ()
+  | "ab" == message =
+    send conn $ "|/w " `T.append` username `T.append` ", Identity confirmed: " `T.append` username
+  | otherwise =
+    if room == "pm" && T.tail username /= T.pack Config.username
+      then do
+        forkIO $ do
+          m <- randomRIO (1,20) :: IO Int
+          threadDelay $ m*1000*1000
+          n <- randomRIO (1,4) :: IO Int
+          send conn $ "|/w " `T.append` username `T.append` "," `T.append` T.replicate n "?"
+        return ()
+      else return ()
 
 startUpActions :: WS.Connection -> IO ()
 startUpActions conn = do
-  send conn "|/blockchallenges"
-  threadDelay $ 600 * 1000
   send conn "|/avatar 120"
   threadDelay $ 600 * 1000
   mapM_ ((>> threadDelay (600 * 1000)) . send conn . T.append "|/j ") Config.rooms
