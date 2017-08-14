@@ -61,7 +61,7 @@ parse conn s = print s >> parse' conn s
 
 commandParse :: WS.Connection -> T.Text -> T.Text -> T.Text -> IO ()
 commandParse conn room username message
-  | "should " `T.isPrefixOf` (T.toLower message) && getNoSetting =
+  | "should " `T.isPrefixOf` (T.toLower message) =
     if room == "pm"
       then send conn $ "|/w " `T.append` username `T.append` ", No."
       else send conn $ room `T.append` "|No."
