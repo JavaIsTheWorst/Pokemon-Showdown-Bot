@@ -95,11 +95,11 @@ commandParse conn room username message
       else if room == "pm"
         then pm conn username "No."
         else say conn room "No."
-  | "stop saying no" `T.isInfixOf` (T.toLower message) && T.tail username == T.pack Config.owner =
+  | "stop saying no" `T.isInfixOf` (T.toLower message) && toId username == toId (T.pack Config.owner) =
     setSetting "should auto-reply no" "False"
-  | "start saying no" `T.isInfixOf` (T.toLower message) && T.tail username == T.pack Config.owner =
+  | "start saying no" `T.isInfixOf` (T.toLower message) && toId username == toId (T.pack Config.owner) =
     setSetting "should auto-reply no" "True"
-  | "say " `T.isPrefixOf` (T.toLower message) && T.tail username == T.pack Config.owner =
+  | "say " `T.isPrefixOf` (T.toLower message) && toId username == toId (T.pack Config.owner) =
     send conn (T.tail.T.tail.T.tail.T.tail$message)
   | "github please" `T.isInfixOf` (T.toLower message) =
     pm conn username "https://github.com/JavaIsTheWorst/Pokemon-Showdown-Bot"
@@ -113,7 +113,24 @@ commandParse conn room username message
     return ()
   | "ab" == message =
     pm conn username $ ", Identity confirmed: " `T.append` username
-  | T.pack (Config.username ++ ", choose") `T.isPrefixOf` (T.toLower message) = do
+  | "in this room, " `T.isPrefixOf` (T.toLower message) =
+    let parts = T.splitOn " -> " $ T.drop (T.length "in this room, ") message
+    in if null $ tail parts
+         then return ()
+         else do
+           commands <- S.readFile "roomcommands.txt"
+           let filteredCommandList = filter (not . ((T.unpack room ++ " -> " ++ T.unpack message ++ " -> ")`isPrefixOf`)) $ lines commands
+           let updatedCommands = unlines $ (T.unpack $ T.intercalate " -> " [room, head parts, head $ tail parts]) : filteredCommandList
+           writeFile "roomcommands.txt" updatedCommands
+  | "delete relation " `T.isPrefixOf` (T.toLower message) =
+    let parts = T.splitOn " -> " $ T.drop (T.length "delete relation ") message
+    in if null $ tail parts
+         then return ()
+         else do
+           commands <- S.readFile "roomcommands.txt"
+           let filteredCommandList = filter (not . ((T.unpack $ T.intercalate " -> " [room, head parts, head $ tail parts])==)) $ lines commands
+           writeFile "roomcommands.txt" $ unlines filteredCommandList
+  | (toId (T.pack Config.username) `T.append` ", choose") `T.isPrefixOf` (T.toLower message) = do
     setting <- getSetting "should choose"
     if setting == Nothing || setting /= Just "True"
       then return ()
@@ -123,12 +140,14 @@ commandParse conn room username message
         if room == "pm"
           then pm conn username textChoice
           else say conn room textChoice
-  | "stop choosing" `T.isInfixOf` (T.toLower message) && T.tail username == T.pack Config.owner =
+  | "stop choosing" `T.isInfixOf` (T.toLower message) && toId username == toId (T.pack Config.owner) =
     setSetting "should choose" "False"
-  | "start choosing" `T.isInfixOf` (T.toLower message) && T.tail username == T.pack Config.owner =
+  | "start choosing" `T.isInfixOf` (T.toLower message) && toId username == toId (T.pack Config.owner) =
     setSetting "should choose" "True"
+  | "vinegar garbodor with an aside of trubbish" == username =
+    pm conn username "vinegar trubbish with an aside of garbodor"
   | otherwise =
-    if room == "pm" && T.tail username /= T.pack Config.username
+    if room == "pm" && toId username /= toId (T.pack Config.username)
       then do
         forkIO $ do
           respond <- randomRIO (1,5) :: IO Int
@@ -140,7 +159,12 @@ commandParse conn room username message
               n <- randomRIO (1,4) :: IO Int
               pm conn username $ T.replicate n "?"
         return ()
-      else return ()
+      else do
+        commands <- S.readFile "roomcommands.txt"
+        let searchedCommand = filter ((T.unpack room ++ " -> " ++ T.unpack message ++ " -> ")`isPrefixOf`) $ lines commands
+        if null searchedCommand
+          then return ()
+          else say conn room . head.tail.tail . T.splitOn " -> " . T.pack $ head searchedCommand
 
 startUpActions :: WS.Connection -> IO ()
 startUpActions conn = do
