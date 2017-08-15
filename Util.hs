@@ -15,3 +15,6 @@ say conn room message = send conn $ room `T.append` "|" `T.append` message
 
 pm :: WS.Connection -> T.Text -> T.Text -> IO ()
 pm conn username message = send conn $ "|/w " `T.append` username `T.append` "," `T.append` message
+
+toId :: T.Text -> T.Text
+toId = T.filter (\c -> c `elem` ['a'..'z'] || c `elem` ['1'..'9']) . T.toLower
