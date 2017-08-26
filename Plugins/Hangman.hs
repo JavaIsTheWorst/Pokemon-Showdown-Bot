@@ -16,5 +16,5 @@ onHangmanMessage room _ = do
   let guessesReaderT   = map (say Config.hangmanColor room . ("/hangman guess " `T.append`)) ["o","d","m"]
       guesses          = map (($ env) . runReaderT) guessesReaderT
       guessesWithDelay = intersperse (threadDelay $ 600 * 1000) guesses
-  liftIO . forkIO $ sequence_ guessesWithDelay
+  _ <- liftIO . forkIO $ sequence_ guessesWithDelay
   return ()
