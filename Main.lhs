@@ -1,22 +1,21 @@
 > {-# LANGUAGE OverloadedStrings, DeriveGeneric #-}
 > module Main where
 
-> import           Control.Concurrent   (forkIO, threadDelay)
-> import           Network.HTTP         (simpleHTTP, postRequestWithBody, getResponseBody)
-> import           Network.HTTP.Base    (urlEncode, rspReason)
-> import           Network.Socket       (withSocketsDo)
-> import           Control.Monad        (forever, unless)
-> import           Control.Monad.Trans  (liftIO)
-> import           Data.Aeson           (eitherDecode, ToJSON, FromJSON, toEncoding, genericToEncoding, defaultOptions)
-> import           Data.List            (isPrefixOf)
-> import           Data.Text            (Text)
-> import           GHC.Generics         (Generic)
-> import           GHC.IO.Encoding      (setLocaleEncoding, utf8)
-> import           Data.Text.Encoding   (encodeUtf8)
-> import qualified Data.ByteString.Lazy as B
-> import qualified Data.Text            as T
-> import qualified Data.Text.IO         as T
-> import qualified Network.WebSockets   as WS
+> import           Control.Concurrent         (forkIO, threadDelay)
+> import           Network.HTTP               (simpleHTTP, postRequestWithBody, getResponseBody)
+> import           Network.HTTP.Base          (urlEncode, rspReason)
+> import           Network.Socket             (withSocketsDo)
+> import           Control.Monad              (forever, unless)
+> import           Control.Monad.Trans        (liftIO)
+> import           Data.Aeson                 (eitherDecode, ToJSON, FromJSON, toEncoding, genericToEncoding, defaultOptions)
+> import           Data.List                  (isPrefixOf)
+> import           Data.Text                  (Text)
+> import           GHC.Generics               (Generic)
+> import           GHC.IO.Encoding            (setLocaleEncoding, utf8)
+> import qualified Data.ByteString.Lazy.Char8 as B
+> import qualified Data.Text                  as T
+> import qualified Data.Text.IO               as T
+> import qualified Network.WebSockets         as WS
 
 > import qualified Config
 
@@ -156,33 +155,9 @@ Send the server a list of commands in the form "|/w user, Harassed" where user i
 
 >   mapM_ ((>> threadDelay (600 * 1000)) . send conn . (flip T.append) ", Harassed." . T.append "|/w ") Config.harassList
 
-Define a User and AssertionObject type for easy convertion from JSON.
-
-> data User = User {
->   userid :: String,
->   usernum :: String,
->   username :: String,
->   email :: Maybe String,
->   registertime :: String,
->   group :: String,
->   banstate :: String,
->   ip :: String,
->   avatar :: String,
->   account :: Maybe String,
->   logintime :: String,
->   loginip :: String,
->   loggedin :: Bool,
->   outdatedpassword :: Bool
->   } deriving (Generic, Show)
-
-> instance ToJSON User where
->   toEncoding = genericToEncoding defaultOptions
-
-> instance FromJSON User
+Define an AssertionObject type for easy convertion from JSON.
 
 > data AssertionObject = AssertionObject {
->   curuser :: User,
->   actionsuccess :: Bool,
 >   assertion :: String
 >   } deriving (Generic, Show)
 
@@ -194,8 +169,7 @@ Define a User and AssertionObject type for easy convertion from JSON.
 Use the Aeson library to convert the JSON string into an AssertionObject and then simply extract the assertion from the Assertion Object.
 
 > getAssertion :: String -> String
-> getAssertion = assertion . either error id . eitherDecode . toLazyByteString
->   where toLazyByteString = B.fromStrict . encodeUtf8 . T.pack
+> getAssertion = assertion . either error id . eitherDecode . B.pack
 
 The entry point to the program: it should connect to the Pokemon Showdown! Websocket and then run the bot.
 Some terminals require the "setLocaleEncoding utf8" to handle some Unicode characters.
