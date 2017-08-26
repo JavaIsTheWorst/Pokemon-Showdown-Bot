@@ -388,7 +388,7 @@ pawnMove b color coord = map (\(c,pt) -> (fromJust c,pt)) . filter ((/= Nothing)
    ((if not (invalidCoord rightCaptureCoord) && getCoord b rightCaptureCoord /= Nothing
     then Just rightCaptureCoord
     else Nothing),Capture),
-   ((if pawnCanAdvanceTwo color coord
+   ((if pawnCanAdvanceTwo color coord && getCoord b forwardOneCoord == Nothing && getCoord b forwardTwoCoord == Nothing
     then Just forwardTwoCoord
     else Nothing),ForwardTwo)]
   where forwardOneCoord   = changeCoord coord (0,pawnDirection color 1)
@@ -455,7 +455,7 @@ genMoves pos@(Position {colorToMove=White}) coord =
                       then (enPassantCoord,EnPassant) : pawnMove (board pos) White coord
                       else pawnMove (board pos) White coord
                   _                   -> pawnMove (board pos) White coord
-              validPawnCoords = filter (maybe True ((/= White) . getPieceColor) . getCoord (board pos) . fst) $ filter (not . pieceInWay (board pos) coord . fst) pawnCoords
+              validPawnCoords = filter (maybe True ((/= White) . getPieceColor) . getCoord (board pos) . fst) pawnCoords
               validPawnMoves  = map (\(coord',moveType) ->
                 case moveType of
                   EnPassant  -> (coord', moveIgnoringInvalid (setCoord (board pos) (changeCoord coord' (0,pawnDirection White (-1))) Nothing) coord coord', Nothing)
@@ -468,7 +468,7 @@ genMoves pos@(Position {colorToMove=White}) coord =
                             setCoord b coord' (Just $ Piece White Knight),
                             setCoord b coord' (Just $ Piece White Rook),
                             setCoord b coord' (Just $ Piece White Queen)] $ repeat Nothing
-                  else return (board pos,target)
+                  else return (b,target)
           in map (\(b,target) -> pos {board=b,colorToMove=Black,enPassantTargetSquare=target,halfmoveClock=0}) validPawnMovesWithPromotion
     _          -> []
 genMoves pos@(Position {colorToMove=Black}) coord =
@@ -529,7 +529,7 @@ genMoves pos@(Position {colorToMove=Black}) coord =
                       then (enPassantCoord,EnPassant) : pawnMove (board pos) Black coord
                       else pawnMove (board pos) Black coord
                   _                   -> pawnMove (board pos) Black coord
-              validPawnCoords = filter (maybe True ((/= Black) . getPieceColor) . getCoord (board pos) . fst) $ filter (not . pieceInWay (board pos) coord . fst) pawnCoords
+              validPawnCoords = filter (maybe True ((/= Black) . getPieceColor) . getCoord (board pos) . fst) pawnCoords
               validPawnMoves  = map (\(coord',moveType) ->
                 case moveType of
                   EnPassant  -> (coord', moveIgnoringInvalid (setCoord (board pos) (changeCoord coord' (0,pawnDirection Black (-1))) Nothing) coord coord', Nothing)
