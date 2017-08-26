@@ -26,7 +26,7 @@ rgbToUNOColor "rgb(175, 165, 40)" = UNOYellow
 rgbToUNOColor "rgb(75, 75, 255)" = UNOBlue
 rgbToUNOColor "rgb(255, 0, 0)" = UNORed
 rgbToUNOColor "inherit" = UNOWild
-rgbToUNOColor color = error . T.unpack $ "rgbToUNOColor: " `T.append` color `T.append` " is not a valid UNO color."
+rgbToUNOColor rgbValue = error . T.unpack $ "rgbToUNOColor: " `T.append` rgbValue `T.append` " is not a valid UNO color."
 
 data UNONumber = None | Zero | One | Two | Three | Four | Five | Six | Seven | Eight | Nine | Reverse | Skip | PlusTwo | PlusFour deriving (Eq)
 
