@@ -567,8 +567,8 @@ movePiece coord1 coord2 promoteTo pos =
         | null matchingMoves = Left "That is not a legal move."
         | otherwise          = Right $ head matchingMoves
       accountCheck pos'
-        | inCheck (getPieceColor $ fromJust piece) $ board pos = Left "That move moves your king into check."
-        | otherwise                                            = Right pos'
+        | inCheck (colorToMove pos) $ board pos' = Left "That move moves your king into check."
+        | otherwise                              = Right pos'
   in accountCheck =<< process
 
 data ChessGame = ChessGame {
