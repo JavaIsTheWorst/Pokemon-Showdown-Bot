@@ -56,7 +56,7 @@ htmlBoard :: Board -> Color -> T.Text
 htmlBoard b White =
   "<div style=\"display:block;padding:0px;margin:0px;width:" `T.append` boardSize `T.append` "px;height:" `T.append` boardSize `T.append` "px;border:4px solid #FF0000;\">" `T.append` (foldr1 T.append . S.reverse . S.zipWith (htmlRank White) (S.fromList [1..8]) $ boardToList b) `T.append` "</div>"
 htmlBoard b Black =
-  "<div style=\"display:block;padding:0px;margin:0px;width:" `T.append` boardSize `T.append` "px;height:" `T.append` boardSize `T.append` "px;border:4px solid #FF0000;\">" `T.append` (foldr1 T.append . S.zipWith (htmlRank Black) (S.fromList [1..8]) $ boardToList b) `T.append` "</div>"
+  "<div style=\"display:block;padding:0px;margin:0px;width:" `T.append` boardSize `T.append` "px;height:" `T.append` boardSize `T.append` "px;border:4px solid #000000;\">" `T.append` (foldr1 T.append . S.zipWith (htmlRank Black) (S.fromList [1..8]) $ boardToList b) `T.append` "</div>"
 
 chessRoom :: T.Text
 chessRoom = "groupchat-" `T.append` toId (T.pack Config.username) `T.append` "-botchess"
@@ -176,7 +176,7 @@ onChessMoveMessage user move = do
                 | otherwise          = Just . fenToPieceType . T.head $ T.drop 4 move
           in case (startCoordValid, endCoordValid) of
             (Just coord1, Just coord2) -> movePiece coord1 coord2 pawnPromoTo pos
-            _                          -> Left "Invalid move. Move with ``move: <start square><end square>``"
+            _                          -> Left "Invalid move"
 
 onImportFENMessage :: T.Text -> T.Text -> ReaderT Env IO ()
 onImportFENMessage user fen = do
@@ -193,8 +193,8 @@ onImportFENMessage user fen = do
           say Config.chessColor chessRoom $ "FEN: " `T.append` fen
           liftIO . threadDelay $ 600 * 1000
           case colorToMove pos of
-            White -> say Config.chessColor chessRoom $ whitePlayer `T.append` "'s turn!"
-            Black -> say Config.chessColor chessRoom $ blackPlayer `T.append` "'s turn!"
+            White -> say Config.chessColor chessRoom $ whitePlayer `T.append` "'s turn! Move with ``move: <startsquare><endsquare>``, e.g. ``move: e2e4``."
+            Black -> say Config.chessColor chessRoom $ blackPlayer `T.append` "'s turn! Move with ``move: <startsquare><endsquare>``, e.g. ``move: e7e5``."
         else return ()
     Nothing                                                                -> return ()
 

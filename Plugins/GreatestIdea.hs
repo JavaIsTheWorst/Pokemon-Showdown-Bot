@@ -26,6 +26,7 @@ onInitiateMessage hostParam playersParam = do
     liftIO $ modifyMVar_ (gestiGame env) (\(Just game) -> return . Just $
       game {assigned=Map.insert user (roles !! (3*n), roles !! (3*n+1), roles !! (3*n+2)) $ assigned game})
     pm Config.gestiColor user $ "Options: " `T.append` T.intercalate "; " (prettyShowRole <$> [roles !! (3*n), roles !! (3*n+1), roles !! (3*n+2)])
+    liftIO . threadDelay $ 1000 * 1000
     pm Config.gestiColor user $ "Choose your role with ``gestipick: <alignment#(from 1-3)>, <role#(from 1-3)>``, e.g. ``gestipick: 2, 1``"
     liftIO . threadDelay $ 1000 * 1000) [0..] $ playersParam
 
@@ -89,7 +90,7 @@ onGestiEndMessage = do
           choseMessage player choice'   = player `T.append` " chose: " `T.append` prettyShowRole (choice choice')
           discardMessage player choice' = player `T.append` " discarded: " `T.append` prettyShowRole (discard choice')
       rolesURL   <- Hastebin.upload $ T.intercalate ";\n" [maybe (didNotChooseMessage player) (choseMessage player) . join . Map.lookup player $ choices game | player <- players game]
-      discardURL <- Hastebin.upload $ T.intercalate ";\n" [maybe (didNotChooseMessage player) (discardMessage player) . join . Map.lookup player $ choices game | player <- players game]
+      discardURL <- Hastebin.upload $ T.intercalate ";\n" [maybe (player `T.append` " did not choose.") (discardMessage player) . join . Map.lookup player $ choices game | player <- players game]
       pm Config.gestiColor (host game) $ "Roles: " `T.append` rolesURL
       pm Config.gestiColor (host game) $ "Discards: " `T.append` discardURL
     Nothing                                                            -> return ()
