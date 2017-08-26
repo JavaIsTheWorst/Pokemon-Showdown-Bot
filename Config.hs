@@ -31,4 +31,4 @@ rooms :: [T.Text]
 rooms = --List of rooms to join
 
 harassList :: [T.Text]
-harassList = --List of username to PM upon startup
+harassList = --List of usernames to PM upon startup
