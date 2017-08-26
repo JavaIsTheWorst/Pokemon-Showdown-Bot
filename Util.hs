@@ -4,25 +4,30 @@ module Util where
 import           Control.Concurrent.STM.TMChan (TMChan, writeTMChan, tryReadTMChan)
 import           Control.Concurrent.MVar       (MVar, withMVar)
 import           Control.Monad.IO.Class        (liftIO)
-import           Control.Monad.Trans.Reader    (ReaderT, runReaderT, ask, local)
+import           Control.Monad.Trans.Reader    (ReaderT, runReaderT, ask)
 import           GHC.Conc                      (atomically)
 import           Data.Text                     as T
 import           Data.Text.IO                  as T
 import qualified Network.WebSockets            as WS
 import qualified System.Console.ANSI           as ANSI
-import qualified System.Console.ANSI.Types     as ANSI
+
+import qualified Config
+import           Plugins.Chess.Types
+import           Plugins.GreatestIdea.Types
 
 data Env = Env {
   lock :: MVar (),
-  chanLock :: MVar (),
   conn :: WS.Connection,
-  chan :: TMChan T.Text}
+  unoChan :: TMChan T.Text,
+  unoChanLock :: MVar (),
+  chessGame :: MVar (Maybe ChessGame),
+  gestiGame :: MVar (Maybe GestiGame)}
 
-readFromChan :: ANSI.Color -> ReaderT Env IO (Maybe T.Text)
-readFromChan color = do
+readFromChan :: ANSI.Color -> TMChan T.Text -> ReaderT Env IO (Maybe T.Text)
+readFromChan color chan = do
   env <- ask
   liftIO $ runReaderT (logText color "READING CHAN") env
-  (Just maybeChanMessage) <- liftIO . atomically . tryReadTMChan $ chan env
+  (Just maybeChanMessage) <- liftIO . atomically . tryReadTMChan $ chan
   case maybeChanMessage of
     Nothing          -> do
       liftIO $ runReaderT (logText color "EMPTY CHAN") env
@@ -31,23 +36,23 @@ readFromChan color = do
       liftIO $ runReaderT (logText color $ "CHAN MESSAGE: " `T.append` chanMessage) env
       return $ Just chanMessage
 
-logChan :: ANSI.Color -> T.Text -> ReaderT Env IO ()
-logChan color str = do
+logChan :: ANSI.Color -> TMChan T.Text -> T.Text -> ReaderT Env IO ()
+logChan color chan str = do
   env <- ask
   liftIO $ runReaderT (logText color $ "WRITING TO CHAN: " `T.append` str) env
-  liftIO $ atomically $ writeTMChan (chan env) str
+  liftIO $ atomically $ writeTMChan chan str
 
-basedOnChan :: ANSI.Color -> (Maybe T.Text -> ReaderT Env IO a) -> ReaderT Env IO a
-basedOnChan color f = do
+basedOnChan :: ANSI.Color -> TMChan T.Text -> MVar () -> (Maybe T.Text -> ReaderT Env IO a) -> ReaderT Env IO a
+basedOnChan color chan chanLock f = do
   env <- ask
-  liftIO $ withMVar (chanLock env) (\_ ->
-    runReaderT (readFromChan color >>= f) env)
+  liftIO $ withMVar chanLock (\_ ->
+    runReaderT (readFromChan color chan >>= f) env)
 
-basedOnChan_ :: ANSI.Color -> (Maybe T.Text -> ReaderT Env IO ()) -> ReaderT Env IO ()
-basedOnChan_ color f = do
+basedOnChan_ :: ANSI.Color -> TMChan T.Text -> MVar () -> (Maybe T.Text -> ReaderT Env IO ()) -> ReaderT Env IO ()
+basedOnChan_ color chan chanLock f = do
   env <- ask
-  liftIO $ withMVar (chanLock env) (\_ ->
-    runReaderT (readFromChan color >>= f) env)
+  liftIO $ withMVar chanLock (\_ ->
+    runReaderT (readFromChan color chan >>= f) env)
 
 logText :: ANSI.Color -> T.Text -> ReaderT Env IO ()
 logText color str = do
@@ -72,8 +77,11 @@ sendWithColor color str = do
     runReaderT (send str) env
     ANSI.setSGR [ANSI.Reset])
 
-useCommand :: ANSI.Color -> T.Text -> ReaderT Env IO ()
-useCommand color message = say color "" message
+useGlobalCommand :: ANSI.Color -> T.Text -> ReaderT Env IO ()
+useGlobalCommand color message = say color "global" message
+
+sayInDefault :: ANSI.Color -> T.Text -> ReaderT Env IO ()
+sayInDefault color message = say color Config.defaultRoom message
 
 say :: ANSI.Color -> T.Text -> T.Text -> ReaderT Env IO ()
 say color room message = sendWithColor color $ room `T.append` "|" `T.append` message

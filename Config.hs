@@ -3,9 +3,6 @@ module Config where
 
 import qualified Data.Text                 as T
 import qualified System.Console.ANSI       as ANSI
-import qualified System.Console.ANSI.Types as ANSI
-
-import           Util
 
 server :: String
 server = "sim.smogon.com"
@@ -23,28 +20,40 @@ path :: String
 path = "/" ++ serverId ++ "/websocket"
 
 username :: String
-username = --Fill in with desired username
+username = "113 (mod 71)"
 
 password :: String
-password = --Fill in with account password to bot
+password = "This is a different password"
 
 owner :: String
-owner = --Your username
+owner = "Java SE Runtime"
+
+defaultRoom :: T.Text
+defaultRoom = head rooms
 
 rooms :: [T.Text]
-rooms = --List of rooms to join
+rooms = ["mafia", "chess", "math"]
 
 harassList :: [T.Text]
-harassList = --List of username to PM upon startup
+harassList = ["Java SE Runtime", "RADicate", "Zorquax"]
+
+respondWithQuestionMarks :: Bool
+respondWithQuestionMarks = True
 
 logColor :: ANSI.Color
-logColor = ANSI.Blue
+logColor = ANSI.White
 
 hangmanColor :: ANSI.Color
 hangmanColor = ANSI.White
 
+chessColor :: ANSI.Color
+chessColor = ANSI.Green
+
+gestiColor :: ANSI.Color
+gestiColor = ANSI.Yellow
+
 unoColor :: ANSI.Color
-unoColor = ANSI.Green
+unoColor = ANSI.Magenta
 
 commandColor :: ANSI.Color
 commandColor = ANSI.White

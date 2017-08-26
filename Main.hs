@@ -2,8 +2,8 @@
 module Main where
 
 import           Control.Concurrent            (forkIO, threadDelay)
-import           Control.Concurrent.STM.TMChan (TMChan, newTMChanIO)
-import           Control.Concurrent.MVar       (MVar, newMVar)
+import           Control.Concurrent.STM.TMChan (newTMChanIO)
+import           Control.Concurrent.MVar       (newMVar)
 import           Control.Monad                 (forever, unless)
 import           Control.Monad.IO.Class        (liftIO)
 import           Control.Monad.Trans.Reader    (ReaderT, runReaderT)
@@ -23,9 +23,11 @@ import           Util
 app :: WS.ClientApp ()
 app conn' = do
   lock' <- newMVar ()
-  chanLock' <- newMVar ()
-  chan' <- newTMChanIO
-  let env = Env {lock=lock', chanLock=chanLock', conn=conn', chan=chan'}
+  unoChan' <- newTMChanIO
+  unoChanLock' <- newMVar ()
+  chessGame' <- newMVar Nothing
+  gestiGame' <- newMVar Nothing
+  let env = Env {lock=lock', conn=conn', unoChan=unoChan', unoChanLock=unoChanLock', chessGame=chessGame', gestiGame=gestiGame'}
   runReaderT (logText Config.connectedColor . T.pack $ "Successfully connected to " ++ "ws://" ++ Config.server ++ ":" ++ (show Config.port) ++ Config.path) env
   _ <- forkIO $ forever $ WS.receiveData conn' >>= (`runReaderT` env) . parse
   let loop = do
@@ -36,8 +38,8 @@ app conn' = do
   threadDelay $ 1000 * 1000
 
 parse :: T.Text -> ReaderT Env IO ()
-parse s = logText Config.logColor s >> parse' s
-  where parse' s
+parse s = liftIO (T.putStrLn s) >> parse'
+  where parse'
           | T.head s == '>' =
             if null$tail messageList
               then return ()
@@ -47,20 +49,20 @@ parse s = logText Config.logColor s >> parse' s
                   "c"     -> if (messageList !! 2) == "~"
                     then
                       if (messageList !! 3) == T.pack Config.username `T.append` "'s turn."
-                        then Uno.onTurnMessage room $ messageList !! 3
+                        then Uno.onTurnMessage
                         else return ()
                     else Commands.parseMessage room (messageList !! 2) $ T.intercalate "|" (tail.tail.tail$messageList)
                   "c:"    -> if (messageList !! 3) == "~"
                     then
                       if (messageList !! 4) == T.pack Config.username `T.append` "'s turn."
-                        then Uno.onTurnMessage room $ messageList !! 4
+                        then Uno.onTurnMessage
                         else return ()
                     else Commands.parseMessage room (messageList !! 3) $ T.intercalate "|" (tail.tail.tail.tail$messageList)
                   "raw"   -> if "You have drawn the following card: " `T.isPrefixOf` (messageList !! 2)
-                    then Uno.onDrawMessage room $ messageList !! 2
+                    then Uno.onDrawMessage $ messageList !! 2
                     else return ()
                   "uhtml" -> processHtmlResponse room (messageList !! 2) $ T.intercalate "|" (tail.tail.tail$messageList)
-                  "uhtmlchange" -> processHtmlChange room (messageList !! 2) $ T.intercalate "|" (tail.tail.tail$messageList)
+                  "uhtmlchange" -> processHtmlChange (messageList !! 2) $ T.intercalate "|" (tail.tail.tail$messageList)
                   _       -> return ()
           | T.head s /= '|' = return ()
           | "|challstr" `T.isPrefixOf` s =
@@ -75,15 +77,16 @@ parse s = logText Config.logColor s >> parse' s
           | "uno-hand" == messageType = Uno.onUnoHandMessage room message
           | "uno" `T.isPrefixOf` messageType = Uno.onUnoMessage room message
           | otherwise = return ()
-        processHtmlChange :: T.Text -> T.Text -> T.Text -> ReaderT Env IO ()
-        processHtmlChange room messageType message
-          | "uno-hand" == messageType = Uno.onUnoHandChangeMessage room message
+        processHtmlChange :: T.Text -> T.Text -> ReaderT Env IO ()
+        processHtmlChange messageType message
+          | "uno-hand" == messageType = Uno.onUnoHandChangeMessage
           | "uno" `T.isPrefixOf` messageType =
             if "The game of UNO has ended." `T.isInfixOf` message
-              then Uno.onUnoEndMessage room message
+              then Uno.onUnoEndMessage
               else return ()
           | otherwise = return ()
 
+main :: IO ()
 main = do
   setLocaleEncoding utf8
   withSocketsDo $ WS.runClient Config.server Config.port Config.path app
