@@ -38,31 +38,37 @@ harassList :: [T.Text]
 harassList = ["Java SE Runtime", "RADicate", "Zorquax"]
 
 respondWithQuestionMarks :: Bool
-respondWithQuestionMarks = True
+respondWithQuestionMarks = False
 
-logColor :: ANSI.Color
-logColor = ANSI.White
+sendColor :: (ANSI.ColorIntensity, ANSI.Color)
+sendColor = (ANSI.Vivid, ANSI.White)
 
-hangmanColor :: ANSI.Color
-hangmanColor = ANSI.White
+logColor :: (ANSI.ColorIntensity, ANSI.Color)
+logColor = (ANSI.Dull, ANSI.White)
 
-chessColor :: ANSI.Color
-chessColor = ANSI.Green
+hangmanColor :: (ANSI.ColorIntensity, ANSI.Color)
+hangmanColor = (ANSI.Vivid, ANSI.White)
 
-gestiColor :: ANSI.Color
-gestiColor = ANSI.Yellow
+chessColor :: (ANSI.ColorIntensity, ANSI.Color)
+chessColor = (ANSI.Vivid, ANSI.Green)
 
-unoColor :: ANSI.Color
-unoColor = ANSI.Magenta
+gestiColor :: (ANSI.ColorIntensity, ANSI.Color)
+gestiColor = (ANSI.Vivid, ANSI.Yellow)
 
-commandColor :: ANSI.Color
-commandColor = ANSI.White
+mafiaColor :: (ANSI.ColorIntensity, ANSI.Color)
+mafiaColor = (ANSI.Vivid, ANSI.Cyan)
 
-connectedColor :: ANSI.Color
-connectedColor = ANSI.White
+unoColor :: (ANSI.ColorIntensity, ANSI.Color)
+unoColor = (ANSI.Vivid, ANSI.Magenta)
 
-loginColor :: ANSI.Color
-loginColor = ANSI.White
+commandColor :: (ANSI.ColorIntensity, ANSI.Color)
+commandColor = (ANSI.Vivid, ANSI.White)
 
-startUpColor :: ANSI.Color
-startUpColor = ANSI.White
+connectedColor :: (ANSI.ColorIntensity, ANSI.Color)
+connectedColor = (ANSI.Vivid, ANSI.White)
+
+loginColor :: (ANSI.ColorIntensity, ANSI.Color)
+loginColor = (ANSI.Vivid, ANSI.White)
+
+startUpColor :: (ANSI.ColorIntensity, ANSI.Color)
+startUpColor = (ANSI.Vivid, ANSI.White)

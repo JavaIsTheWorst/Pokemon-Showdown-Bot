@@ -15,6 +15,7 @@ import           Commands.Permissions
 import           Commands.Settings
 import qualified Config
 import qualified Plugins.Chess                 as Chess
+import qualified Plugins.Mafia                 as Mafia
 import qualified Plugins.GreatestIdea          as Gesti
 import           Util
 
@@ -59,6 +60,8 @@ parseMessage room username message
           else return ()) $ return ()
   | "github please" `T.isInfixOf` (T.toLower message) =
     pm Config.commandColor username "https://github.com/JavaIsTheWorst/Pokemon-Showdown-Bot"
+  | "hi " `T.isInfixOf` (T.toLower message) && toId username == toId (T.pack Config.owner) =
+    pm Config.commandColor username "hi"
   | "what is java" `T.isPrefixOf` (T.toLower message) = do
     env <- ask
     _ <- liftIO . forkIO $ do
@@ -102,7 +105,7 @@ parseMessage room username message
            commands <- liftIO $ S.readFile "roomcommands.txt"
            let filteredCommandList = filter (not . ((T.unpack . T.intercalate " -> " $ room : parts)==)) $ lines commands
            liftIO . writeFile "roomcommands.txt" $ unlines filteredCommandList
-  | (toId (T.pack Config.username) `T.append` "choose") `T.isPrefixOf` (toId message) = do
+  | "choose" `T.isPrefixOf` (toId message) = do
     env <- ask
     liftIO $ checkSetting "should choose" (T.unpack room) (==Just "True") (do
       choice <- randomIO :: IO Choice
@@ -143,14 +146,16 @@ parseMessage room username message
   | "import moves: " `T.isPrefixOf` (T.toLower message) =
     let moves = T.drop (T.length "import moves: ") message
     in Chess.onImportMovesMessage (toId username) moves
-  | "end current chess host" `T.isInfixOf` (T.toLower message) && toId username == toId (T.pack Config.owner) = Chess.onChessEndMessage
+  | "end current chess host" `T.isInfixOf` (T.toLower message) && toId username == toId (T.pack Config.owner) =
+    Chess.onChessEndMessage
   | "initiate gesti: " `T.isPrefixOf` (T.toLower message) && toId username == toId (T.pack Config.owner) =
     let (host:players) = T.splitOn "," $ T.drop (T.length "initiate gesti: ") message
     in Gesti.onInitiateMessage (toId host) (map toId players)
   | "gestipick: " `T.isPrefixOf` (T.toLower message) =
     let (alignmentNumber:roleNumber:_) = (T.splitOn "," $ T.drop (T.length "gestipick: ") message) ++ [""]
     in Gesti.onPickMessage (toId username) (T.strip alignmentNumber) (T.strip roleNumber)
-  | "end gesti choosing period" `T.isInfixOf` (T.toLower message) && toId username == toId (T.pack Config.owner) = Gesti.onGestiEndMessage
+  | "end gesti choosing period" `T.isInfixOf` (T.toLower message) && toId username == toId (T.pack Config.owner) =
+    Gesti.onGestiEndMessage
   | "give the permission " `T.isInfixOf` (T.toLower message) = do
     env <- ask
     let user       = T.drop (T.length " to ") . snd $ T.breakOn " to " message
@@ -172,6 +177,50 @@ parseMessage room username message
     liftIO $ checkRankText username (>=0) (runReaderT (
       let user = T.drop (T.length "check the permissions of ") . snd $ T.breakOn "check the permissions of " message
       in pm Config.commandColor username =<< ("Permission of " `T.append` user `T.append` ": " `T.append`) . T.pack . show <$> liftIO (getRankText user)) env) $ return ()
+  | "initiate ss2" `T.isPrefixOf` (T.toLower message) && toId username == toId (T.pack Config.owner) =
+    Mafia.onMafiaInitiateSS2Message room
+  | "initiate ss3" `T.isPrefixOf` (T.toLower message) && toId username == toId (T.pack Config.owner) =
+    Mafia.onMafiaInitiateSS3Message room
+  | "initiate wnaf" `T.isPrefixOf` (T.toLower message) && toId username == toId (T.pack Config.owner) =
+    Mafia.onMafiaInitiateWnafMessage room
+  | "@j" `T.isPrefixOf` (T.toLower message) || "@join" `T.isPrefixOf` (T.toLower message) =
+    Mafia.onMafiaJoinMessage room username
+  | "@leave" `T.isPrefixOf` (T.toLower message) =
+    Mafia.onMafiaLeaveMessage room username
+  | "@add " `T.isPrefixOf` (T.toLower message) && toId username == toId (T.pack Config.owner) = 
+    let users = T.splitOn "," $ T.drop (T.length "@add ") message
+    in Mafia.onMafiaAddPlayersMessage room users
+  | "@kick " `T.isPrefixOf` (T.toLower message) && toId username == toId (T.pack Config.owner) =
+    let users = T.splitOn "," $ T.drop (T.length "@kick ") message
+    in Mafia.onMafiaKickPlayersMessage room users
+  | "@start" `T.isPrefixOf` (T.toLower message) && toId username == toId (T.pack Config.owner) =
+    Mafia.onMafiaStartMessage room
+  | "@l " `T.isPrefixOf` (T.toLower message) =
+    let vote = T.drop (T.length "@l ") message
+    in Mafia.onMafiaLynchMessage room username $ Just vote
+  | "@nl" `T.isPrefixOf` (T.toLower message) =
+    Mafia.onMafiaLynchMessage room username Nothing
+  | "@ul" `T.isPrefixOf` (T.toLower message) =
+    Mafia.onMafiaUnlynchMessage room username
+  | "@0" `T.isPrefixOf` (T.toLower message) =
+    Mafia.onMafiaDisplayLynchesMessage room
+  | "@target " `T.isPrefixOf` (T.toLower message) =
+    case T.splitOn "," $ T.drop (T.length "@target ") message of
+      (targetRoom:parts) -> Mafia.onMafiaTargetMessage targetRoom username parts
+      _                  -> return ()
+  | "@kill " `T.isPrefixOf` (T.toLower message) && toId username == toId (T.pack Config.owner) =
+    let users = T.splitOn "," $ T.drop (T.length "@kill ") message
+    in Mafia.onMafiaEliminatePlayersMessage room users
+  | "@pl" `T.isPrefixOf` (T.toLower message) && toId username == toId (T.pack Config.owner) =
+    Mafia.onMafiaDisplayPlayersMessage room
+  | "@end" `T.isInfixOf` (T.toLower message) && toId username == toId (T.pack Config.owner) =
+    Mafia.onMafiaEndMessage room
+  | "/invite " `T.isPrefixOf` (T.toLower message) && toId username == toId (T.pack Config.owner) =
+    if room == "pm"
+      then
+        let roomToJoin = T.drop (T.length "/invite ") message
+        in useGlobalCommand Config.commandColor $ "/j " `T.append` roomToJoin
+      else return ()
   | otherwise = do
     env <- ask
     liftIO $ checkRankText username (>=0) (runReaderT (
