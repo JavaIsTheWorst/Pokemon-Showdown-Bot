@@ -2,11 +2,11 @@
 module Plugins.Chess where
 
 import           Control.Concurrent         (forkIO, threadDelay)
-import           Control.Concurrent.MVar    (modifyMVar_, readMVar, swapMVar)
 import           Control.Monad.IO.Class     (liftIO)
 import           Control.Monad.Trans.Reader (ReaderT, ask, runReaderT)
 import           Data.Foldable              (foldr1)
 import           Data.Maybe                 (fromJust)
+import           Data.IORef                 (modifyIORef, readIORef, writeIORef)
 import qualified Data.Sequence              as S
 import qualified Data.Text                  as T
 
@@ -82,35 +82,35 @@ onInitiateMessage whitePlayer blackPlayer = do
     threadDelay $ 600 * 1000
     runReaderT (say Config.chessColor chessRoom $ "FEN: " `T.append` initialFEN) env
     threadDelay $ 600 * 1000
-    runReaderT (say Config.chessColor chessRoom $ whitePlayer `T.append` "'s turn!") env
-    _ <- swapMVar (chessGame env) $ Just (ChessGame{players=(whitePlayer,blackPlayer),position=initialPosition,moves=""})
+    runReaderT (say Config.chessColor chessRoom $ whitePlayer `T.append` "'s turn! Move with ``move: <startsquare><endsquare>``, e.g. ``move: e2e4``.") env
+    writeIORef (chessGame env) $ Just (ChessGame{players=(whitePlayer,blackPlayer),position=initialPosition,moves=""})
     return ()
   return ()
 
 getGame :: ReaderT Env IO (Maybe ChessGame)
-getGame = ask >>= liftIO . readMVar . chessGame
+getGame = ask >>= liftIO . readIORef . chessGame
 
 getPosition :: ReaderT Env IO (Maybe Position)
 getPosition = do
   env <- ask
-  game <- liftIO . readMVar $ chessGame env
+  game <- liftIO . readIORef $ chessGame env
   return $ position <$> game
 
 setPosition :: Position -> ReaderT Env IO ()
 setPosition pos' = do
   env <- ask
-  liftIO . modifyMVar_ (chessGame env) $ return . ((\game -> game {position=pos'}) <$>)
+  liftIO . modifyIORef (chessGame env) $ ((\game -> game {position=pos'}) <$>)
 
 getMoves :: ReaderT Env IO (Maybe T.Text)
 getMoves = do
   env <- ask
-  game <- liftIO . readMVar $ chessGame env
+  game <- liftIO . readIORef $ chessGame env
   return $ moves <$> game
 
 setMoves :: T.Text -> ReaderT Env IO ()
 setMoves moves' = do
   env <- ask
-  liftIO . modifyMVar_ (chessGame env) $ return . ((\game -> game {moves=moves'}) <$>)
+  liftIO . modifyIORef (chessGame env) $ ((\game -> game {moves=moves'}) <$>)
 
 addMove :: T.Text -> ReaderT Env IO ()
 addMove move = do
@@ -121,9 +121,9 @@ addMove move = do
           else existingMoves `T.append` " " `T.append` move'
       changeMoves maybeGame =
         case maybeGame of
-          Just game -> return . Just $ game {moves=appendMove move $ moves game}
-          Nothing   -> return Nothing
-  liftIO $ modifyMVar_ (chessGame env) changeMoves
+          Just game -> Just $ game {moves=appendMove move $ moves game}
+          Nothing   -> Nothing
+  liftIO $ modifyIORef (chessGame env) changeMoves
 
 onChessMoveMessage :: T.Text -> T.Text -> ReaderT Env IO ()
 onChessMoveMessage user move = do

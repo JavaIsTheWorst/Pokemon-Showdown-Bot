@@ -2,10 +2,10 @@
 module Plugins.GreatestIdea where
 
 import           Control.Concurrent         (threadDelay)
-import           Control.Concurrent.MVar    (modifyMVar_, readMVar, swapMVar)
 import           Control.Monad              (join)
 import           Control.Monad.IO.Class     (liftIO)
 import           Control.Monad.Trans.Reader (ReaderT, ask)
+import           Data.IORef                 (modifyIORef, readIORef, writeIORef)
 import           Data.List                  (nub)
 import           Data.Maybe                 (fromJust)
 import           System.Random              (newStdGen, randomRs)
@@ -20,10 +20,10 @@ import           Util
 onInitiateMessage :: T.Text -> [T.Text] -> ReaderT Env IO ()
 onInitiateMessage hostParam playersParam = do
   env <- ask
-  _ <- liftIO . swapMVar (gestiGame env) $ Just (GestiGame{host=hostParam,players=playersParam,assigned=Map.empty,choices=Map.fromList . zip playersParam $ repeat Nothing})
+  liftIO . writeIORef (gestiGame env) $ Just (GestiGame{host=hostParam,players=playersParam,assigned=Map.empty,choices=Map.fromList . zip playersParam $ repeat Nothing})
   roles <- liftIO $ map (roleList !!) . nub . randomRs (0,length roleList-1) <$> newStdGen
   sequence_ . zipWith (\n user -> do
-    liftIO $ modifyMVar_ (gestiGame env) (\(Just game) -> return . Just $
+    liftIO $ modifyIORef (gestiGame env) (\(Just game) -> Just $
       game {assigned=Map.insert user (roles !! (3*n), roles !! (3*n+1), roles !! (3*n+2)) $ assigned game})
     pm Config.gestiColor user $ "Options: " `T.append` T.intercalate "; " (prettyShowRole <$> [roles !! (3*n), roles !! (3*n+1), roles !! (3*n+2)])
     liftIO . threadDelay $ 1000 * 1000
@@ -33,7 +33,7 @@ onInitiateMessage hostParam playersParam = do
 onPickMessage :: T.Text -> T.Text -> T.Text -> ReaderT Env IO ()
 onPickMessage user alignmentNumber roleNumber = do
   env <- ask
-  maybeGame <- liftIO . readMVar $ gestiGame env
+  maybeGame <- liftIO . readIORef $ gestiGame env
   case maybeGame of
     Just game ->
       if user `elem` players game
@@ -67,7 +67,7 @@ onPickMessage user alignmentNumber roleNumber = do
             case (maybeChosenAlignment, maybeChosenRoleType, maybeDiscard) of
               (Just chosenAlignment, Just chosenRoleType, Just chosenDiscard) -> do
                 pm Config.gestiColor user $ "You have chosen the role: " `T.append` prettyShowRole (Role{alignment=chosenAlignment,roleType=chosenRoleType})
-                _ <- liftIO . swapMVar (gestiGame env) . Just $
+                liftIO . writeIORef (gestiGame env) . Just $
                   game {
                     choices=Map.adjust (const . Just $ Choice {
                       choice=Role{alignment=chosenAlignment,roleType=chosenRoleType},
@@ -82,7 +82,7 @@ onPickMessage user alignmentNumber roleNumber = do
 onGestiEndMessage :: ReaderT Env IO ()
 onGestiEndMessage = do
   env <- ask
-  maybeGame <- liftIO . readMVar $ gestiGame env
+  maybeGame <- liftIO . readIORef $ gestiGame env
   case maybeGame of
     Just game -> do
       let showRoleTuple (a,b,c)         = T.intercalate ", " [prettyShowRole a, prettyShowRole b, prettyShowRole c]
@@ -94,5 +94,5 @@ onGestiEndMessage = do
       pm Config.gestiColor (host game) $ "Roles: " `T.append` rolesURL
       pm Config.gestiColor (host game) $ "Discards: " `T.append` discardURL
     Nothing                                                            -> return ()
-  _ <- liftIO $ swapMVar (gestiGame env) Nothing
+  liftIO $ writeIORef (gestiGame env) Nothing
   return ()
