@@ -1,7 +1,10 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Plugins.Uno.Types where
 
-import qualified Data.Text as T
+import           Data.IORef              (IORef)
+import qualified Control.Concurrent.Lock as Lock
+
+import qualified Data.Text               as T
 
 data UNOColor = UNOWild | UNOBlue | UNOGreen | UNORed | UNOYellow deriving (Eq, Ord)
 
@@ -76,3 +79,5 @@ readUNOCard str = UNOCard {color = cardColor, number = cardNumber}
   where parts = T.splitOn " " str
         cardColor = readUNOColor $ head parts
         cardNumber = if null $ tail parts then None else readUNONumber . head $ tail parts
+
+data UNOGame = UNOGame {chan :: IORef T.Text, chanLock :: Lock.Lock}
